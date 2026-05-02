@@ -8,7 +8,6 @@ import PhotoGallery from './components/PhotoGallery';
 import NotificationSettings from './components/NotificationSettings';
 import { deleteAlbum } from './utils/photoDb';
 import { checkAndNotify } from './utils/notificationService';
-import { initFirebase } from './firebase';
 import './App.css';
 
 /**
@@ -54,7 +53,6 @@ function App() {
   const [toastMessage, setToastMessage] = useState('');
 
   // Notificações
-  const [notifSettings, setNotifSettings] = useState({});
   const [notificationsChecked, setNotificationsChecked] = useState(false);
 
   // ========================================
@@ -96,55 +94,17 @@ function App() {
     localStorage.setItem('date_plan_covers', JSON.stringify(coverPhotos));
   }, [coverPhotos]);
 
-  // Carregar configurações de notificação
-  useEffect(() => {
-    try {
-      const savedNotif = localStorage.getItem('date_plan_notif_settings');
-      let config = {};
-      
-      if (savedNotif) {
-        config = JSON.parse(savedNotif);
-      }
-
-      // Mesclar com variáveis de ambiente (prioridade para env vars se localStorage estiver vazio)
-      const envConfig = {
-        apiKey: import.meta.env.VITE_FIREBASE_API_KEY || config.apiKey || '',
-        authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || config.authDomain || '',
-        projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || config.projectId || '',
-        storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || config.storageBucket || '',
-        messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || config.messagingSenderId || '',
-        appId: import.meta.env.VITE_FIREBASE_APP_ID || config.appId || '',
-        email: config.email || '',
-        userName: config.userName || '',
-        emailEnabled: config.emailEnabled ?? (!!import.meta.env.VITE_FIREBASE_API_KEY),
-      };
-
-      setNotifSettings(envConfig);
-      initFirebase(envConfig);
-    } catch (e) {
-      console.warn('Erro ao carregar config de notificação:', e);
-    }
-  }, []);
-
-  // Salvar configurações de notificação
-  useEffect(() => {
-    if (Object.keys(notifSettings).length > 0) {
-      localStorage.setItem('date_plan_notif_settings', JSON.stringify(notifSettings));
-      initFirebase(notifSettings); // Re-inicializar se as configs mudarem
-    }
-  }, [notifSettings]);
-
   // Verificar notificações ao carregar (uma vez por sessão)
   useEffect(() => {
     if (dates.length > 0 && !notificationsChecked) {
       setNotificationsChecked(true);
-      checkAndNotify(dates, notifSettings).then((notified) => {
+      checkAndNotify(dates).then((notified) => {
         if (notified.length > 0) {
           showToast(`🔔 ${notified.length} lembrete${notified.length > 1 ? 's' : ''} enviado${notified.length > 1 ? 's' : ''}!`);
         }
       });
     }
-  }, [dates, notificationsChecked, notifSettings]);
+  }, [dates, notificationsChecked]);
 
   // ========================================
   // Cálculos de orçamento mensal
@@ -444,11 +404,6 @@ function App() {
       <NotificationSettings
         isOpen={showNotifSettings}
         onClose={() => setShowNotifSettings(false)}
-        settings={notifSettings}
-        onSaveSettings={(s) => {
-          setNotifSettings(s);
-          showToast('🔔 Configurações de notificação salvas!');
-        }}
       />
 
       {/* Toast */}

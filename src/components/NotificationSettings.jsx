@@ -1,30 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { sendTestEmail, requestBrowserPermission } from '../utils/notificationService';
+import { requestBrowserPermission } from '../utils/notificationService';
 
 /**
  * NotificationSettings — Modal de configurações de notificação
- * Agora simplificado: Chaves ficam no .env, usuário só fornece email
+ * Simplificado para apenas notificações do navegador
  */
-export default function NotificationSettings({ isOpen, onClose, settings, onSaveSettings }) {
-  const [formData, setFormData] = useState({
-    email: '',
-    userName: '',
-    emailEnabled: false,
-  });
-  const [testStatus, setTestStatus] = useState(''); // '', 'sending', 'success', 'error'
+export default function NotificationSettings({ isOpen, onClose }) {
   const [browserPermission, setBrowserPermission] = useState('default');
 
   useEffect(() => {
-    if (isOpen) {
-      setFormData({
-        email: settings?.email || '',
-        userName: settings?.userName || '',
-        emailEnabled: settings?.emailEnabled || false,
-      });
-      setTestStatus('');
-      if ('Notification' in window) setBrowserPermission(Notification.permission);
+    if (isOpen && 'Notification' in window) {
+      setBrowserPermission(Notification.permission);
     }
-  }, [isOpen, settings]);
+  }, [isOpen]);
 
   useEffect(() => {
     const handleEsc = (e) => { if (e.key === 'Escape') onClose(); };
@@ -40,37 +28,10 @@ export default function NotificationSettings({ isOpen, onClose, settings, onSave
 
   if (!isOpen) return null;
 
-  const handleChange = (field) => (e) => {
-    const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
-    setFormData((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleSave = () => {
-    onSaveSettings(formData);
-    onClose();
-  };
-
   const handleRequestPermission = async () => {
     const result = await requestBrowserPermission();
     setBrowserPermission(result);
   };
-
-  const handleTestEmail = async () => {
-    if (!formData.email) {
-      setTestStatus('error');
-      return;
-    }
-    setTestStatus('sending');
-    try {
-      await sendTestEmail({ ...settings, ...formData });
-      setTestStatus('success');
-    } catch (err) {
-      console.error(err);
-      setTestStatus('error');
-    }
-  };
-
-  const isFirebaseActive = !!import.meta.env.VITE_FIREBASE_API_KEY;
 
   return (
     <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
@@ -81,98 +42,52 @@ export default function NotificationSettings({ isOpen, onClose, settings, onSave
         </div>
 
         <div className="modal__body">
-          {/* Browser Notifications */}
           <div className="notif-section">
             <div className="notif-section__header">
               <span className="notif-section__icon">🌐</span>
               <div>
                 <h3 className="notif-section__title">Notificações do Navegador</h3>
-                <p className="notif-section__desc">Receba lembretes locais no navegador</p>
+                <p className="notif-section__desc">Receba lembretes nativos no seu dispositivo quando houver um date hoje.</p>
               </div>
             </div>
-            <div className="notif-section__status">
+            
+            <div className="notif-section__status" style={{ marginTop: '20px' }}>
               {browserPermission === 'granted' ? (
-                <span className="notif-badge notif-badge--active">✅ Ativado</span>
+                <div className="notif-badge notif-badge--active" style={{ fontSize: '1rem', padding: '8px 16px' }}>
+                  ✅ Notificações Ativadas
+                </div>
               ) : browserPermission === 'denied' ? (
-                <span className="notif-badge notif-badge--denied">❌ Bloqueado</span>
+                <div className="notif-badge notif-badge--denied">
+                  ❌ Bloqueado pelo navegador (Ative nas configurações do site)
+                </div>
               ) : (
-                <button className="notif-section__enable-btn" onClick={handleRequestPermission}>Ativar Notificações</button>
+                <button 
+                  className="notif-section__enable-btn" 
+                  onClick={handleRequestPermission}
+                  style={{ width: '100%', padding: '16px' }}
+                >
+                  🔔 Ativar Lembretes Diários
+                </button>
               )}
             </div>
-          </div>
 
-          <div className="notif-divider" />
-
-          {/* Email Settings */}
-          <div className="notif-section">
-            <div className="notif-section__header">
-              <span className="notif-section__icon">📧</span>
-              <div>
-                <h3 className="notif-section__title">Lembretes por Email</h3>
-                <p className="notif-section__desc">Envia um lembrete no dia do seu date</p>
-              </div>
-              <label className="notif-toggle">
-                <input 
-                  type="checkbox" 
-                  checked={formData.emailEnabled} 
-                  onChange={handleChange('emailEnabled')}
-                  disabled={!isFirebaseActive} 
-                />
-                <span className="notif-toggle__slider" />
-              </label>
+            <div className="notif-guide" style={{ marginTop: '24px', fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: '1.5' }}>
+              <p><strong>Como funciona:</strong></p>
+              <ul>
+                <li>O app verifica automaticamente se você tem encontros marcados para o dia atual.</li>
+                <li>Se houver um date, você receberá uma notificação visual.</li>
+                <li>Ao clicar na notificação, você será levado para os detalhes do encontro.</li>
+              </ul>
             </div>
           </div>
-
-          {!isFirebaseActive && (
-            <div className="notif-warning">
-              ⚠️ O serviço de email não está configurado no servidor.
-            </div>
-          )}
-
-          {formData.emailEnabled && isFirebaseActive && (
-            <>
-              <div className="modal__field">
-                <label className="modal__label">Email de Destino</label>
-                <input 
-                  className="modal__input" 
-                  type="email" 
-                  placeholder="seu@email.com" 
-                  value={formData.email} 
-                  onChange={handleChange('email')} 
-                />
-              </div>
-
-              <div className="modal__field">
-                <label className="modal__label">Seu Nome (como quer ser chamado)</label>
-                <input 
-                  className="modal__input" 
-                  type="text" 
-                  placeholder="Ex: Pedro" 
-                  value={formData.userName} 
-                  onChange={handleChange('userName')} 
-                />
-              </div>
-
-              <button
-                className={`notif-test-btn ${testStatus === 'sending' ? 'notif-test-btn--sending' : ''}`}
-                onClick={handleTestEmail}
-                disabled={testStatus === 'sending' || !formData.email}
-              >
-                {testStatus === '' && '📨 Enviar Email de Teste'}
-                {testStatus === 'sending' && '⏳ Enviando...'}
-                {testStatus === 'success' && '✅ Teste enviado com sucesso!'}
-                {testStatus === 'error' && '❌ Erro ao enviar. Verifique seu email.'}
-              </button>
-            </>
-          )}
         </div>
 
         <div className="modal__footer">
-          <button className="modal__btn modal__btn--secondary" onClick={onClose}>Cancelar</button>
-          <button className="modal__btn modal__btn--primary" onClick={handleSave}>💾 Salvar Configurações</button>
+          <button className="modal__btn modal__btn--primary" onClick={onClose} style={{ width: '100%' }}>
+            Entendido
+          </button>
         </div>
       </div>
     </div>
   );
 }
-
