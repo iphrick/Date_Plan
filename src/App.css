@@ -1523,76 +1523,15 @@ textarea.modal__input {
   background: white;
 }
 
-/* Service Config (Firebase/EmailJS) */
-.notif-service-config {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.notif-service-config__toggle {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  padding: 10px 14px;
+.notif-warning {
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--warning);
+  padding: 12px;
   border-radius: var(--radius-sm);
-  background: var(--bg-primary);
-  border: 1px solid var(--border-subtle);
-  color: var(--text-secondary);
-  font-size: 0.8rem;
-  font-weight: 500;
-  transition: all var(--transition-fast);
-}
-
-.notif-service-config__toggle:hover {
-  border-color: var(--border-light);
-}
-
-.notif-service-config__fields {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  animation: slideDown 0.2s ease;
-}
-
-.notif-service-config__guide {
-  background: var(--bg-primary);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  padding: 14px 16px;
   font-size: 0.75rem;
-  color: var(--text-secondary);
-  line-height: 1.6;
-}
-
-.notif-service-config__guide p {
-  margin-bottom: 8px;
-}
-
-.notif-service-config__guide ol {
-  padding-left: 18px;
-  margin: 0;
-}
-
-.notif-service-config__guide li {
-  margin-bottom: 4px;
-}
-
-.notif-service-config__guide a {
-  color: var(--accent);
-  text-decoration: none;
-}
-
-.notif-service-config__guide a:hover {
-  text-decoration: underline;
-}
-
-.notif-service-config__guide code {
-  background: var(--bg-tertiary);
-  padding: 1px 4px;
-  border-radius: 3px;
-  font-size: 0.7rem;
+  margin: 10px 0;
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  line-height: 1.4;
 }
 
 /* Test Email Button */
@@ -1606,6 +1545,7 @@ textarea.modal__input {
   font-weight: 600;
   transition: all var(--transition-fast);
   text-align: center;
+  margin-top: 10px;
 }
 
 .notif-test-btn:hover {

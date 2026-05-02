@@ -2,24 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { sendTestEmail, requestBrowserPermission } from '../utils/notificationService';
 
 /**
- * NotificationSettings — Modal de configurações de notificação (Firebase Edition)
+ * NotificationSettings — Modal de configurações de notificação
+ * Agora simplificado: Chaves ficam no .env, usuário só fornece email
  */
 export default function NotificationSettings({ isOpen, onClose, settings, onSaveSettings }) {
   const [formData, setFormData] = useState({
     email: '',
     userName: '',
     emailEnabled: false,
-    // Firebase Config
-    apiKey: '',
-    authDomain: '',
-    projectId: '',
-    storageBucket: '',
-    messagingSenderId: '',
-    appId: '',
   });
   const [testStatus, setTestStatus] = useState(''); // '', 'sending', 'success', 'error'
   const [browserPermission, setBrowserPermission] = useState('default');
-  const [showSetup, setShowSetup] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -27,12 +20,6 @@ export default function NotificationSettings({ isOpen, onClose, settings, onSave
         email: settings?.email || '',
         userName: settings?.userName || '',
         emailEnabled: settings?.emailEnabled || false,
-        apiKey: settings?.apiKey || '',
-        authDomain: settings?.authDomain || '',
-        projectId: settings?.projectId || '',
-        storageBucket: settings?.storageBucket || '',
-        messagingSenderId: settings?.messagingSenderId || '',
-        appId: settings?.appId || '',
       });
       setTestStatus('');
       if ('Notification' in window) setBrowserPermission(Notification.permission);
@@ -69,13 +56,13 @@ export default function NotificationSettings({ isOpen, onClose, settings, onSave
   };
 
   const handleTestEmail = async () => {
-    if (!formData.email || !formData.apiKey || !formData.projectId) {
+    if (!formData.email) {
       setTestStatus('error');
       return;
     }
     setTestStatus('sending');
     try {
-      await sendTestEmail(formData);
+      await sendTestEmail({ ...settings, ...formData });
       setTestStatus('success');
     } catch (err) {
       console.error(err);
@@ -83,7 +70,7 @@ export default function NotificationSettings({ isOpen, onClose, settings, onSave
     }
   };
 
-  const isFirebaseConfigured = formData.apiKey && formData.projectId;
+  const isFirebaseActive = !!import.meta.env.VITE_FIREBASE_API_KEY;
 
   return (
     <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
@@ -116,92 +103,66 @@ export default function NotificationSettings({ isOpen, onClose, settings, onSave
 
           <div className="notif-divider" />
 
-          {/* Firebase Email */}
+          {/* Email Settings */}
           <div className="notif-section">
             <div className="notif-section__header">
-              <span className="notif-section__icon">🔥</span>
+              <span className="notif-section__icon">📧</span>
               <div>
-                <h3 className="notif-section__title">Email via Firebase</h3>
-                <p className="notif-section__desc">Envia email usando Firestore + Trigger Email</p>
+                <h3 className="notif-section__title">Lembretes por Email</h3>
+                <p className="notif-section__desc">Envia um lembrete no dia do seu date</p>
               </div>
               <label className="notif-toggle">
-                <input type="checkbox" checked={formData.emailEnabled} onChange={handleChange('emailEnabled')} />
+                <input 
+                  type="checkbox" 
+                  checked={formData.emailEnabled} 
+                  onChange={handleChange('emailEnabled')}
+                  disabled={!isFirebaseActive} 
+                />
                 <span className="notif-toggle__slider" />
               </label>
             </div>
           </div>
 
-          {formData.emailEnabled && (
+          {!isFirebaseActive && (
+            <div className="notif-warning">
+              ⚠️ O serviço de email não está configurado no servidor.
+            </div>
+          )}
+
+          {formData.emailEnabled && isFirebaseActive && (
             <>
               <div className="modal__field">
                 <label className="modal__label">Email de Destino</label>
-                <input className="modal__input" type="email" placeholder="seu@email.com" value={formData.email} onChange={handleChange('email')} />
+                <input 
+                  className="modal__input" 
+                  type="email" 
+                  placeholder="seu@email.com" 
+                  value={formData.email} 
+                  onChange={handleChange('email')} 
+                />
               </div>
 
               <div className="modal__field">
-                <label className="modal__label">Seu Nome</label>
-                <input className="modal__input" type="text" placeholder="Ex: Pedro" value={formData.userName} onChange={handleChange('userName')} />
+                <label className="modal__label">Seu Nome (como quer ser chamado)</label>
+                <input 
+                  className="modal__input" 
+                  type="text" 
+                  placeholder="Ex: Pedro" 
+                  value={formData.userName} 
+                  onChange={handleChange('userName')} 
+                />
               </div>
 
-              <div className="notif-service-config">
-                <button className="notif-service-config__toggle" onClick={() => setShowSetup(!showSetup)}>
-                  ⚙️ Configurar Firebase {showSetup ? '▲' : '▼'}
-                </button>
-
-                {showSetup && (
-                  <div className="notif-service-config__fields">
-                    <div className="notif-service-config__guide">
-                      <p><strong>Configuração:</strong></p>
-                      <ol>
-                        <li>No Firebase Console, instale a extensão <strong>Trigger Email</strong></li>
-                        <li>Configure a coleção como <code>mail</code></li>
-                        <li>Cole sua <strong>Configuração do Web App</strong> abaixo:</li>
-                      </ol>
-                    </div>
-
-                    <div className="modal__field">
-                      <label className="modal__label">
-                        API Key {import.meta.env.VITE_FIREBASE_API_KEY && <span className="notif-env-badge">(Vercel ENV)</span>}
-                      </label>
-                      <input className="modal__input" type="text" value={formData.apiKey} onChange={handleChange('apiKey')} placeholder={import.meta.env.VITE_FIREBASE_API_KEY ? "Configurado via Vercel" : ""} />
-                    </div>
-
-                    <div className="modal__field">
-                      <label className="modal__label">
-                        Project ID {import.meta.env.VITE_FIREBASE_PROJECT_ID && <span className="notif-env-badge">(Vercel ENV)</span>}
-                      </label>
-                      <input className="modal__input" type="text" value={formData.projectId} onChange={handleChange('projectId')} placeholder={import.meta.env.VITE_FIREBASE_PROJECT_ID ? "Configurado via Vercel" : ""} />
-                    </div>
-
-                    <div className="modal__field">
-                      <label className="modal__label">
-                        Auth Domain {import.meta.env.VITE_FIREBASE_AUTH_DOMAIN && <span className="notif-env-badge">(Vercel ENV)</span>}
-                      </label>
-                      <input className="modal__input" type="text" value={formData.authDomain} onChange={handleChange('authDomain')} placeholder={import.meta.env.VITE_FIREBASE_AUTH_DOMAIN ? "Configurado via Vercel" : ""} />
-                    </div>
-                    
-                    <div className="modal__field">
-                      <label className="modal__label">
-                        App ID {import.meta.env.VITE_FIREBASE_APP_ID && <span className="notif-env-badge">(Vercel ENV)</span>}
-                      </label>
-                      <input className="modal__input" type="text" value={formData.appId} onChange={handleChange('appId')} placeholder={import.meta.env.VITE_FIREBASE_APP_ID ? "Configurado via Vercel" : ""} />
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {isFirebaseConfigured && formData.email && (
-                <button
-                  className={`notif-test-btn ${testStatus === 'sending' ? 'notif-test-btn--sending' : ''}`}
-                  onClick={handleTestEmail}
-                  disabled={testStatus === 'sending'}
-                >
-                  {testStatus === '' && '📨 Enviar Email de Teste (Firebase)'}
-                  {testStatus === 'sending' && '⏳ Enviando para Firestore...'}
-                  {testStatus === 'success' && '✅ Documento adicionado! Verifique o console Firebase'}
-                  {testStatus === 'error' && '❌ Erro. Verifique o console do navegador'}
-                </button>
-              )}
+              <button
+                className={`notif-test-btn ${testStatus === 'sending' ? 'notif-test-btn--sending' : ''}`}
+                onClick={handleTestEmail}
+                disabled={testStatus === 'sending' || !formData.email}
+              >
+                {testStatus === '' && '📨 Enviar Email de Teste'}
+                {testStatus === 'sending' && '⏳ Enviando...'}
+                {testStatus === 'success' && '✅ Teste enviado com sucesso!'}
+                {testStatus === 'error' && '❌ Erro ao enviar. Verifique seu email.'}
+              </button>
             </>
           )}
         </div>
@@ -214,3 +175,4 @@ export default function NotificationSettings({ isOpen, onClose, settings, onSave
     </div>
   );
 }
+
