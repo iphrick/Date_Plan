@@ -9,7 +9,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px;
+  padding: 12px 16px;
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border-subtle);
   position: sticky;
@@ -22,8 +22,8 @@
 .header__month-nav {
   display: flex;
   align-items: center;
-  gap: 8px;
-  min-width: 140px;
+  gap: 6px;
+  min-width: 110px;
 }
 
 .header__nav-btn {
@@ -104,13 +104,13 @@
 .header__budget-btn {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 8px 14px;
-  border-radius: var(--radius-md);
+  gap: 2px;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
   background: var(--bg-tertiary);
   border: 1px solid var(--border-subtle);
   transition: all var(--transition-fast);
-  min-width: 120px;
+  min-width: 90px;
 }
 
 .header__budget-btn:hover {
@@ -202,21 +202,23 @@
    Calendar Day
    ======================================== */
 .day {
-  aspect-ratio: 4 / 3;
-  min-height: 70px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
+  min-height: 75px;
+  padding: 6px;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.875rem;
-  font-weight: 500;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: all var(--transition-fast);
   cursor: pointer;
   position: relative;
   overflow: hidden;
-  transition: all var(--transition-normal);
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-subtle);
-  color: var(--text-primary);
+}
+
+.day:active {
+  transform: scale(0.96);
+  background: var(--bg-tertiary);
 }
 
 .day:hover {
@@ -500,20 +502,24 @@
   letter-spacing: 0.5px;
 }
 
-.modal__input {
+.modal__input,
+.modal__textarea {
   width: 100%;
-  padding: 12px 16px;
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-md);
   background: var(--bg-primary);
+  border: 1.5px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
   color: var(--text-primary);
-  font-size: 0.9375rem;
+  font-size: 1rem; /* Importante para mobile: previne zoom automático no iOS */
   transition: all var(--transition-fast);
+  outline: none;
 }
 
-.modal__input:focus {
+.modal__input:focus,
+.modal__textarea:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-glow);
+  box-shadow: 0 0 0 3px rgba(255, 77, 109, 0.1);
+  background: var(--bg-tertiary);
 }
 
 .modal__input::placeholder {
@@ -1280,6 +1286,121 @@ textarea.modal__input {
   line-height: 1.6;
 }
 
+/* ========================================
+   Responsive — Small Mobile
+   ======================================== */
+@media (max-width: 380px) {
+  .header__brand {
+    display: none; /* Esconde o texto DATE PLAN em telas minúsculas */
+  }
+  
+  .calendar__weekday {
+    font-size: 0.6rem;
+  }
+  
+  .day {
+    min-height: 65px;
+    padding: 4px;
+  }
+  
+  .day__number {
+    font-size: 0.75rem;
+  }
+}
+
+/* ========================================
+   Responsive — General Mobile
+   ======================================== */
+@media (max-width: 767px) {
+  .modal {
+    width: 100%;
+    max-width: 100%;
+    height: 92vh;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    margin-top: auto;
+    animation: slideUpModal 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  @keyframes slideUpModal {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+
+  .modal__body {
+    padding: 20px 16px;
+  }
+
+  .modal__footer {
+    padding: 16px;
+    padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    flex-direction: column-reverse; /* Botão principal no topo para alcance fácil */
+    gap: 12px;
+  }
+
+  .modal__btn {
+    width: 100%;
+    padding: 14px;
+    font-size: 1rem;
+  }
+
+  .day__title {
+    font-size: 0.6rem;
+    -webkit-line-clamp: 2;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    line-height: 1.1;
+  }
+  
+  .day__cost {
+    display: none;
+  }
+
+  .calendar__grid {
+    gap: 3px;
+  }
+
+  .calendar__weekday {
+    font-size: 0.65rem;
+    padding: 4px 0;
+  }
+
+  .fab {
+    bottom: 24px;
+    right: 20px;
+    width: 56px;
+    height: 56px;
+    box-shadow: 0 8px 24px rgba(255, 77, 109, 0.4);
+  }
+
+  .photo-thumbnails {
+    grid-template-columns: repeat(2, 1fr); /* Miniaturas maiores no mobile */
+    gap: 8px;
+  }
+
+  .budget__summary {
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: space-around;
+  }
+
+  .budget__item {
+    min-width: 80px;
+  }
+
+  .budget__date-item {
+    padding: 12px;
+  }
+
+  .completion-toggle {
+    padding: 16px;
+  }
+
+  .completion-toggle__check {
+    font-size: 1.75rem;
+  }
+}
 /* ========================================
    Responsive — Tablet
    ======================================== */
