@@ -1280,8 +1280,237 @@ textarea.modal__input {
   line-height: 1.6;
 }
 
+
 /* ========================================
-   Responsive — Tablet
+   RESPONSIVE — MOBILE UX/UI (STRICT)
+   Breakpoints: 767px (Mobile)
+   ======================================== */
+
+@media (max-width: 767px) {
+  /* --- 1. Typography & Global --- */
+  html {
+    font-size: 15px;
+  }
+
+  /* --- 2. Header (Compact & Functional) --- */
+  .header {
+    padding: 10px 12px;
+    height: 64px;
+  }
+
+  .header__month-nav {
+    min-width: 90px;
+    gap: 4px;
+  }
+
+  .header__nav-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 0.75rem;
+  }
+
+  .header__month-label {
+    font-size: 0.8rem;
+  }
+
+  .header__brand {
+    gap: 4px;
+  }
+
+  .header__logo {
+    font-size: 0.9rem;
+  }
+
+  .header__heart {
+    font-size: 1rem;
+  }
+
+  .header__budget-btn {
+    min-width: 80px;
+    padding: 6px 8px;
+    gap: 2px;
+  }
+
+  .header__budget-value {
+    font-size: 0.65rem;
+  }
+
+  .header__budget-label {
+    font-size: 0.45rem;
+  }
+
+  .header__notif-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 0.9rem;
+  }
+
+  /* --- 3. Calendar Grid (Edge-to-Edge) --- */
+  .calendar {
+    padding: 8px 6px;
+  }
+
+  .calendar__grid {
+    gap: 3px;
+  }
+
+  .calendar__weekday {
+    font-size: 0.6rem;
+    padding: 4px 0;
+  }
+
+  /* --- 4. Day Squares (Touch Optimized) --- */
+  .day {
+    min-height: 70px;
+    padding: 4px;
+    border-radius: 8px;
+  }
+
+  .day__number {
+    font-size: 0.75rem;
+  }
+
+  .day__title {
+    font-size: 0.6rem;
+    line-height: 1.1;
+    -webkit-line-clamp: 2;
+    margin-top: 2px;
+  }
+
+  .day__cost {
+    display: none; /* Limpeza visual no mobile */
+  }
+
+  /* --- 5. Modals (Bottom Sheet Pattern) --- */
+  .modal-overlay {
+    align-items: flex-end; /* Alinha no fundo para Mobile */
+    padding: 0;
+  }
+
+  .modal {
+    width: 100%;
+    max-width: 100% !important;
+    max-height: 94vh;
+    border-radius: 20px 20px 0 0; /* Arredondado apenas em cima */
+    animation: slideUpSheet 0.4s var(--transition-smooth);
+    display: flex;
+    flex-direction: column;
+  }
+
+  @keyframes slideUpSheet {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+
+  /* Handle do Bottom Sheet para indicar que pode deslizar */
+  .modal::before {
+    content: '';
+    width: 40px;
+    height: 4px;
+    background: var(--border-light);
+    border-radius: 2px;
+    margin: 8px auto 4px;
+    flex-shrink: 0;
+  }
+
+  .modal__header {
+    padding: 12px 20px 16px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .modal__title {
+    font-size: 1.1rem;
+  }
+
+  .modal__body {
+    padding: 20px 16px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .modal__footer {
+    padding: 16px;
+    padding-bottom: calc(16px + env(safe-area-inset-bottom, 20px));
+    flex-direction: column-reverse; /* Botão principal em cima para polegar */
+    gap: 12px;
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  /* --- 6. Form Elements (Accessibility) --- */
+  .modal__input,
+  .modal__textarea,
+  .budget__input {
+    min-height: 48px; /* Mínimo para toque */
+    font-size: 16px !important; /* Evita zoom forçado no iOS */
+    padding: 12px 16px;
+  }
+
+  .modal__label {
+    font-size: 0.85rem;
+    margin-bottom: 8px;
+  }
+
+  .modal__btn {
+    width: 100%;
+    min-height: 52px;
+    font-size: 1rem;
+    border-radius: 12px;
+  }
+
+  /* --- 7. Budget Panel Specific --- */
+  .budget__summary {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .budget__item:first-child {
+    grid-column: span 2;
+    background: var(--bg-primary);
+    padding: 12px;
+    border-radius: 12px;
+  }
+
+  .budget__item-value {
+    font-size: 1.25rem;
+  }
+
+  /* --- 8. Gallery --- */
+  .gallery__grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .photo-thumbnails {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  /* --- 9. FAB (Floating Action Button) --- */
+  .fab {
+    width: 60px;
+    height: 60px;
+    bottom: 24px;
+    right: 20px;
+    box-shadow: 0 8px 32px rgba(255, 107, 138, 0.4);
+    font-size: 1.5rem;
+  }
+
+  /* --- 10. Toasts --- */
+  .toast {
+    bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+    width: 90%;
+    max-width: 400px;
+    padding: 14px 20px;
+    font-size: 0.9rem;
+    text-align: center;
+  }
+}
+
+
+/* ========================================
+   RESPONSIVE — TABLET
+   Breakpoints: 768px+
    ======================================== */
 @media (min-width: 768px) {
   .calendar {
@@ -1336,7 +1565,8 @@ textarea.modal__input {
 }
 
 /* ========================================
-   Responsive — Desktop
+   RESPONSIVE — DESKTOP
+   Breakpoints: 1024px+
    ======================================== */
 @media (min-width: 1024px) {
   .calendar {
@@ -1368,7 +1598,8 @@ textarea.modal__input {
 }
 
 /* ========================================
-   Responsive — Large Desktop
+   RESPONSIVE — LARGE DESKTOP
+   Breakpoints: 1280px+
    ======================================== */
 @media (min-width: 1280px) {
   .calendar {
@@ -1387,7 +1618,7 @@ textarea.modal__input {
 }
 
 /* ========================================
-   Notification Settings
+   NOTIFICATION SETTINGS (COMMON)
    ======================================== */
 .notif-settings {
   max-width: 460px;
@@ -1447,38 +1678,6 @@ textarea.modal__input {
   color: var(--danger);
 }
 
-.notif-env-badge {
-  font-size: 0.6rem;
-  color: var(--accent);
-  background: rgba(255, 77, 109, 0.1);
-  padding: 1px 6px;
-  border-radius: 4px;
-  margin-left: 6px;
-  text-transform: uppercase;
-}
-
-.notif-section__enable-btn {
-  padding: 8px 16px;
-  border-radius: var(--radius-sm);
-  background: linear-gradient(135deg, var(--accent), #ff9a9e);
-  color: white;
-  font-size: 0.8rem;
-  font-weight: 600;
-  transition: all var(--transition-fast);
-}
-
-.notif-section__enable-btn:hover {
-  box-shadow: var(--shadow-glow);
-  transform: translateY(-1px);
-}
-
-.notif-divider {
-  height: 1px;
-  background: var(--border-subtle);
-  margin: 4px 0;
-}
-
-/* Toggle Switch */
 .notif-toggle {
   position: relative;
   margin-left: auto;
@@ -1534,7 +1733,6 @@ textarea.modal__input {
   line-height: 1.4;
 }
 
-/* Test Email Button */
 .notif-test-btn {
   width: 100%;
   padding: 12px;
@@ -1546,14 +1744,4 @@ textarea.modal__input {
   transition: all var(--transition-fast);
   text-align: center;
   margin-top: 10px;
-}
-
-.notif-test-btn:hover {
-  background: rgba(16, 185, 129, 0.2);
-  transform: translateY(-1px);
-}
-
-.notif-test-btn--sending {
-  opacity: 0.7;
-  pointer-events: none;
 }
