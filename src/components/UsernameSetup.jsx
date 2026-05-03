@@ -42,7 +42,8 @@ export default function UsernameSetup() {
     try {
       await saveUsername(trimmed);
     } catch (err) {
-      setError('Erro ao salvar. Tente novamente.');
+      console.error(err);
+      setError(`Erro: ${err.message || 'Falha ao salvar'}`);
       setSaving(false);
     }
   };
