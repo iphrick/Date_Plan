@@ -2451,3 +2451,51 @@ textarea.modal__input {
   text-align: center;
   margin-top: 10px;
 }
+
+/* ========================================
+   Username Setup & Preview
+   ======================================== */
+.username-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 24px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px dashed var(--border-light);
+  border-radius: var(--radius-lg);
+  margin: 16px 0;
+  animation: scaleIn 0.3s var(--transition-smooth);
+}
+
+.username-preview__avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), #ff9a9e);
+  color: white;
+  font-size: 1.5rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-glow);
+}
+
+.username-preview__name {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.username-preview__hint {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* Spinner for loading states */
+.auth-card__spinner {
+  display: inline-block;
+  animation: pulse 1s infinite;
+}

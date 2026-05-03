@@ -170,7 +170,8 @@ export default function GroupView({ group: initialGroup, onBack, showToast }) {
 
   const handleRemoveMember = async (memberUid) => {
     const member = group.members.find((m) => m.uid === memberUid);
-    if (!confirm(`Remover ${member?.email} do grupo?`)) return;
+    const memberName = member?.displayName || member?.email || 'Membro';
+    if (!confirm(`Remover ${memberName} do grupo?`)) return;
     try {
       const result = await removeGroupMember(group.id, user.uid, memberUid);
       if (result.success) {
@@ -239,10 +240,10 @@ export default function GroupView({ group: initialGroup, onBack, showToast }) {
           {group.members.map((member) => (
             <div key={member.uid} className="group-member-item">
               <div className="group-member-item__avatar">
-                {member.email[0].toUpperCase()}
+                {(member.displayName || member.email || '?')[0].toUpperCase()}
               </div>
               <div className="group-member-item__info">
-                <span className="group-member-item__email">{member.email}</span>
+                <span className="group-member-item__email">{member.displayName || member.email}</span>
                 <span className={`group-member-item__role group-member-item__role--${member.role}`}>
                   {member.role === 'owner' ? '👑 Criador' : 'Membro'}
                 </span>

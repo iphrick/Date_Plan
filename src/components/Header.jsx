@@ -16,7 +16,7 @@ export default function Header({
   onGroupsClick,
   onLogout,
 }) {
-  const { user } = useAuth();
+  const { user, username } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
 
@@ -37,7 +37,8 @@ export default function Header({
   }
   if (isOver) valueColor = 'var(--danger)';
 
-  const userInitial = user?.email ? user.email[0].toUpperCase() : '?';
+  const userInitial = username ? username[0].toUpperCase() : user?.email ? user.email[0].toUpperCase() : '?';
+  const displayName = username || user?.email || '';
   const userEmail = user?.email || '';
 
   // Fechar menu ao clicar fora
@@ -133,8 +134,8 @@ export default function Header({
                 <div className="avatar-menu__user">
                   <div className="avatar-menu__user-avatar">{userInitial}</div>
                   <div className="avatar-menu__user-info">
-                    <span className="avatar-menu__user-email">{userEmail}</span>
-                    <span className="avatar-menu__user-label">Conta ativa</span>
+                    <span className="avatar-menu__user-name">{displayName}</span>
+                    <span className="avatar-menu__user-label">{userEmail}</span>
                   </div>
                 </div>
 

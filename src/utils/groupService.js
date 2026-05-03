@@ -42,10 +42,10 @@ function generateInviteCode() {
 
 /**
  * Cria um novo grupo no Firestore
+ * @param {string} displayName - Username do usuário
  * @returns {Object} O grupo criado (com id do Firestore)
  */
-export async function createGroup(name, ownerUid, ownerEmail) {
-  // Gerar código único
+export async function createGroup(name, ownerUid, displayName) {
   let code = generateInviteCode();
 
   const groupData = {
@@ -54,7 +54,7 @@ export async function createGroup(name, ownerUid, ownerEmail) {
     ownerUid,
     memberUids: [ownerUid],
     members: [
-      { uid: ownerUid, email: ownerEmail, role: 'owner', joinedAt: new Date().toISOString() },
+      { uid: ownerUid, displayName, role: 'owner', joinedAt: new Date().toISOString() },
     ],
     dates: [],
     createdAt: serverTimestamp(),
@@ -96,9 +96,10 @@ export async function getGroupById(groupId) {
 
 /**
  * Entra em um grupo via código de convite
+ * @param {string} displayName - Username do usuário
  * @returns {{ success: boolean, group?: Object, error?: string }}
  */
-export async function joinGroupByCode(code, uid, email) {
+export async function joinGroupByCode(code, uid, displayName) {
   const cleanCode = code.toUpperCase().trim();
   console.log('[GroupService] Tentando entrar com código:', cleanCode);
 
@@ -145,7 +146,7 @@ export async function joinGroupByCode(code, uid, email) {
         memberUids: arrayUnion(uid),
         members: arrayUnion({
           uid,
-          email,
+          displayName,
           role: 'member',
           joinedAt: new Date().toISOString(),
         }),
@@ -167,7 +168,7 @@ export async function joinGroupByCode(code, uid, email) {
       memberUids: arrayUnion(uid),
       members: arrayUnion({
         uid,
-        email,
+        displayName,
         role: 'member',
         joinedAt: new Date().toISOString(),
       }),

@@ -13,7 +13,7 @@ import {
  * Lista grupos, cria novos, entra via código de convite
  */
 export default function GroupsPanel({ isOpen, onClose, onSelectGroup }) {
-  const { user } = useAuth();
+  const { user, username } = useAuth();
   const [groups, setGroups] = useState([]);
   const [view, setView] = useState('list'); // 'list' | 'create' | 'join'
   const [newGroupName, setNewGroupName] = useState('');
@@ -70,7 +70,7 @@ export default function GroupsPanel({ isOpen, onClose, onSelectGroup }) {
       return;
     }
     try {
-      const group = await createGroup(newGroupName.trim(), user.uid, user.email);
+      const group = await createGroup(newGroupName.trim(), user.uid, username);
       await loadGroups();
       setNewGroupName('');
       setView('list');
@@ -86,7 +86,7 @@ export default function GroupsPanel({ isOpen, onClose, onSelectGroup }) {
       return;
     }
     try {
-      const result = await joinGroupByCode(joinCode.trim(), user.uid, user.email);
+      const result = await joinGroupByCode(joinCode.trim(), user.uid, username);
       if (result.success) {
         await loadGroups();
         setJoinCode('');

@@ -5,13 +5,15 @@ import {
   createUserWithEmailAndPassword,
   signOut,
 } from 'firebase/auth';
-import { auth } from '../firebase';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { auth, db } from '../firebase';
 
 /**
  * AuthContext — Contexto global de autenticação Firebase
  * 
- * Provê: user, loading, login, signup, logout
+ * Provê: user, loading, login, signup, logout, username, setUsername
  * Observa mudanças de autenticação via onAuthStateChanged
+ * Busca/salva username no Firestore (collection: users)
  */
 
 const AuthContext = createContext(null);
@@ -24,18 +26,51 @@ export function useAuth() {
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
+  const [username, setUsernameState] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // Buscar username do Firestore
+  const fetchUsername = async (uid) => {
+    try {
+      const userDoc = await getDoc(doc(db, 'users', uid));
+      if (userDoc.exists() && userDoc.data().username) {
+        setUsernameState(userDoc.data().username);
+        return userDoc.data().username;
+      }
+    } catch (e) {
+      console.warn('Erro ao buscar username:', e);
+    }
+    return null;
+  };
+
+  // Salvar username no Firestore
+  const saveUsername = async (newUsername) => {
+    if (!user) return;
+    try {
+      await setDoc(doc(db, 'users', user.uid), {
+        username: newUsername.trim(),
+        email: user.email,
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+      setUsernameState(newUsername.trim());
+    } catch (e) {
+      console.error('Erro ao salvar username:', e);
+      throw e;
+    }
+  };
 
   // Observar estado de autenticação
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         setUser({
           uid: firebaseUser.uid,
           email: firebaseUser.email,
         });
+        await fetchUsername(firebaseUser.uid);
       } else {
         setUser(null);
+        setUsernameState(null);
       }
       setLoading(false);
     });
@@ -58,7 +93,7 @@ export function AuthProvider({ children }) {
     return signOut(auth);
   };
 
-  const value = { user, loading, login, signup, logout };
+  const value = { user, username, loading, login, signup, logout, saveUsername };
 
   return (
     <AuthContext.Provider value={value}>

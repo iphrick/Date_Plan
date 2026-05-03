@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './contexts/AuthContext';
 import AuthScreen from './components/AuthScreen';
+import UsernameSetup from './components/UsernameSetup';
 import GroupsPanel from './components/GroupsPanel';
 import GroupView from './components/GroupView';
 import Header from './components/Header';
@@ -30,7 +31,7 @@ function getMonthKey(month, year) {
 }
 
 function App() {
-  const { user, loading: authLoading, logout } = useAuth();
+  const { user, username, loading: authLoading, logout } = useAuth();
 
   // ========================================
   // Estado — sempre declarado (regras de hooks)
@@ -283,6 +284,13 @@ function App() {
   // ========================================
   if (!user) {
     return <AuthScreen />;
+  }
+
+  // ========================================
+  // Render — Username Setup (primeira vez)
+  // ========================================
+  if (!username) {
+    return <UsernameSetup />;
   }
 
   // ========================================
