@@ -20,11 +20,25 @@ export default function GroupsPanel({ isOpen, onClose, onSelectGroup }) {
   const [joinCode, setJoinCode] = useState('');
   const [message, setMessage] = useState({ text: '', type: '' });
   const [copiedGroupId, setCopiedGroupId] = useState(null);
+  const [loadingGroups, setLoadingGroups] = useState(false);
 
   // Carregar grupos ao abrir
+  const loadGroups = async () => {
+    if (!user) return;
+    setLoadingGroups(true);
+    try {
+      const data = await getMyGroups(user.uid);
+      setGroups(data);
+    } catch (e) {
+      console.warn('Erro ao carregar grupos:', e);
+    } finally {
+      setLoadingGroups(false);
+    }
+  };
+
   useEffect(() => {
     if (isOpen && user) {
-      setGroups(getMyGroups(user.uid));
+      loadGroups();
       setView('list');
       setMessage({ text: '', type: '' });
     }
@@ -50,53 +64,69 @@ export default function GroupsPanel({ isOpen, onClose, onSelectGroup }) {
     setTimeout(() => setMessage({ text: '', type: '' }), 3000);
   };
 
-  const handleCreateGroup = () => {
+  const handleCreateGroup = async () => {
     if (!newGroupName.trim()) {
       showMsg('Digite um nome para o grupo.', 'error');
       return;
     }
-    const group = createGroup(newGroupName.trim(), user.uid, user.email);
-    setGroups(getMyGroups(user.uid));
-    setNewGroupName('');
-    setView('list');
-    showMsg(`Grupo "${group.name}" criado! Código: ${group.code}`);
+    try {
+      const group = await createGroup(newGroupName.trim(), user.uid, user.email);
+      await loadGroups();
+      setNewGroupName('');
+      setView('list');
+      showMsg(`Grupo "${group.name}" criado! Código: ${group.code}`);
+    } catch (e) {
+      showMsg('Erro ao criar grupo. Tente novamente.', 'error');
+    }
   };
 
-  const handleJoinGroup = () => {
+  const handleJoinGroup = async () => {
     if (!joinCode.trim()) {
       showMsg('Digite o código de convite.', 'error');
       return;
     }
-    const result = joinGroupByCode(joinCode.trim(), user.uid, user.email);
-    if (result.success) {
-      setGroups(getMyGroups(user.uid));
-      setJoinCode('');
-      setView('list');
-      showMsg(`Você entrou no grupo "${result.group.name}"!`);
-    } else {
-      showMsg(result.error, 'error');
+    try {
+      const result = await joinGroupByCode(joinCode.trim(), user.uid, user.email);
+      if (result.success) {
+        await loadGroups();
+        setJoinCode('');
+        setView('list');
+        showMsg(`Você entrou no grupo "${result.group.name}"!`);
+      } else {
+        showMsg(result.error, 'error');
+      }
+    } catch (e) {
+      showMsg('Erro ao entrar no grupo. Tente novamente.', 'error');
     }
   };
 
-  const handleDeleteGroup = (groupId, groupName) => {
+  const handleDeleteGroup = async (groupId, groupName) => {
     if (!confirm(`Tem certeza que deseja deletar "${groupName}"? Todos os dates serão perdidos.`)) return;
-    const result = deleteGroup(groupId, user.uid);
-    if (result.success) {
-      setGroups(getMyGroups(user.uid));
-      showMsg('Grupo deletado.');
-    } else {
-      showMsg(result.error, 'error');
+    try {
+      const result = await deleteGroup(groupId, user.uid);
+      if (result.success) {
+        await loadGroups();
+        showMsg('Grupo deletado.');
+      } else {
+        showMsg(result.error, 'error');
+      }
+    } catch (e) {
+      showMsg('Erro ao deletar grupo.', 'error');
     }
   };
 
-  const handleLeaveGroup = (groupId, groupName) => {
+  const handleLeaveGroup = async (groupId, groupName) => {
     if (!confirm(`Sair do grupo "${groupName}"?`)) return;
-    const result = leaveGroup(groupId, user.uid);
-    if (result.success) {
-      setGroups(getMyGroups(user.uid));
-      showMsg('Você saiu do grupo.');
-    } else {
-      showMsg(result.error, 'error');
+    try {
+      const result = await leaveGroup(groupId, user.uid);
+      if (result.success) {
+        await loadGroups();
+        showMsg('Você saiu do grupo.');
+      } else {
+        showMsg(result.error, 'error');
+      }
+    } catch (e) {
+      showMsg('Erro ao sair do grupo.', 'error');
     }
   };
 
@@ -141,7 +171,12 @@ export default function GroupsPanel({ isOpen, onClose, onSelectGroup }) {
               </div>
 
               {/* Lista */}
-              {groups.length === 0 ? (
+              {loadingGroups ? (
+                <div className="groups-empty">
+                  <span className="groups-empty__icon">⏳</span>
+                  <p>Carregando grupos...</p>
+                </div>
+              ) : groups.length === 0 ? (
                 <div className="groups-empty">
                   <span className="groups-empty__icon">👥</span>
                   <p>Você ainda não faz parte de nenhum grupo.</p>

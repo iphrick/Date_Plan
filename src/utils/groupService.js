@@ -1,25 +1,34 @@
 /**
- * groupService.js — Serviço de Grupos (localStorage)
+ * groupService.js — Serviço de Grupos (Firebase Firestore)
  * 
  * CRUD completo de grupos com sistema de convite por código.
- * Arquitetura preparada para futura migração para API/backend.
- * 
- * Estrutura no localStorage (chave: 'date_plan_groups'):
- * Array de grupos, cada um com: id, name, code, ownerUid, members[], dates[], createdAt
+ * Dados compartilhados entre todos os usuários via Firestore.
  */
 
-const STORAGE_KEY = 'date_plan_groups';
+import {
+  collection,
+  doc,
+  addDoc,
+  getDoc,
+  getDocs,
+  updateDoc,
+  deleteDoc,
+  query,
+  where,
+  arrayUnion,
+  arrayRemove,
+  serverTimestamp,
+} from 'firebase/firestore';
+import { db } from '../firebase';
+
+const GROUPS_COLLECTION = 'groups';
 
 // ========================================
 // Helpers
 // ========================================
 
-function generateId() {
-  return crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-}
-
 function generateInviteCode() {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Sem I/O/0/1 para evitar confusão
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let code = '';
   for (let i = 0; i < 6; i++) {
     code += chars[Math.floor(Math.random() * chars.length)];
@@ -27,141 +36,153 @@ function generateInviteCode() {
   return code;
 }
 
-function loadGroups() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveGroups(groups) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(groups));
-}
-
 // ========================================
 // CRUD de Grupos
 // ========================================
 
 /**
- * Cria um novo grupo
- * @returns {Object} O grupo criado
+ * Cria um novo grupo no Firestore
+ * @returns {Object} O grupo criado (com id do Firestore)
  */
-export function createGroup(name, ownerUid, ownerEmail) {
-  const groups = loadGroups();
+export async function createGroup(name, ownerUid, ownerEmail) {
+  // Gerar código único
+  let code = generateInviteCode();
 
-  // Gerar código único (verificar colisão)
-  let code;
-  do {
-    code = generateInviteCode();
-  } while (groups.some((g) => g.code === code));
+  // Verificar colisão (raro mas possível)
+  const codeQuery = query(collection(db, GROUPS_COLLECTION), where('code', '==', code));
+  const existing = await getDocs(codeQuery);
+  if (!existing.empty) {
+    code = generateInviteCode(); // Tenta outro
+  }
 
-  const newGroup = {
-    id: generateId(),
+  const groupData = {
     name: name.trim(),
     code,
     ownerUid,
+    memberUids: [ownerUid], // Array simples para queries eficientes
     members: [
       { uid: ownerUid, email: ownerEmail, role: 'owner', joinedAt: new Date().toISOString() },
     ],
     dates: [],
-    createdAt: new Date().toISOString(),
+    createdAt: serverTimestamp(),
   };
 
-  groups.push(newGroup);
-  saveGroups(groups);
-  return newGroup;
+  const docRef = await addDoc(collection(db, GROUPS_COLLECTION), groupData);
+
+  return { id: docRef.id, ...groupData };
 }
 
 /**
- * Retorna todos os grupos onde o usuário é membro ou owner
+ * Retorna todos os grupos onde o usuário é membro
  */
-export function getMyGroups(uid) {
-  const groups = loadGroups();
-  return groups.filter((g) => g.members.some((m) => m.uid === uid));
+export async function getMyGroups(uid) {
+  const q = query(
+    collection(db, GROUPS_COLLECTION),
+    where('memberUids', 'array-contains', uid)
+  );
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 }
 
 /**
  * Retorna um grupo pelo ID
  */
-export function getGroupById(groupId) {
-  const groups = loadGroups();
-  return groups.find((g) => g.id === groupId) || null;
+export async function getGroupById(groupId) {
+  const docSnap = await getDoc(doc(db, GROUPS_COLLECTION, groupId));
+  if (docSnap.exists()) {
+    return { id: docSnap.id, ...docSnap.data() };
+  }
+  return null;
 }
 
 /**
  * Entra em um grupo via código de convite
  * @returns {{ success: boolean, group?: Object, error?: string }}
  */
-export function joinGroupByCode(code, uid, email) {
-  const groups = loadGroups();
-  const group = groups.find((g) => g.code === code.toUpperCase().trim());
+export async function joinGroupByCode(code, uid, email) {
+  const q = query(
+    collection(db, GROUPS_COLLECTION),
+    where('code', '==', code.toUpperCase().trim())
+  );
+  const snapshot = await getDocs(q);
 
-  if (!group) {
+  if (snapshot.empty) {
     return { success: false, error: 'Código de convite inválido' };
   }
 
+  const groupDoc = snapshot.docs[0];
+  const groupData = groupDoc.data();
+
   // Verificar se já é membro
-  if (group.members.some((m) => m.uid === uid)) {
+  if (groupData.memberUids && groupData.memberUids.includes(uid)) {
     return { success: false, error: 'Você já faz parte deste grupo' };
   }
 
-  // Adicionar membro
-  group.members.push({
-    uid,
-    email,
-    role: 'member',
-    joinedAt: new Date().toISOString(),
+  // Adicionar membro ao grupo
+  await updateDoc(doc(db, GROUPS_COLLECTION, groupDoc.id), {
+    memberUids: arrayUnion(uid),
+    members: arrayUnion({
+      uid,
+      email,
+      role: 'member',
+      joinedAt: new Date().toISOString(),
+    }),
   });
 
-  saveGroups(groups);
-  return { success: true, group };
+  return {
+    success: true,
+    group: { id: groupDoc.id, ...groupData },
+  };
 }
 
 /**
  * Remove um membro do grupo (apenas o owner pode)
  */
-export function removeGroupMember(groupId, ownerUid, memberUid) {
-  const groups = loadGroups();
-  const group = groups.find((g) => g.id === groupId);
-
+export async function removeGroupMember(groupId, ownerUid, memberUid) {
+  const group = await getGroupById(groupId);
   if (!group) return { success: false, error: 'Grupo não encontrado' };
   if (group.ownerUid !== ownerUid) return { success: false, error: 'Apenas o criador pode remover membros' };
   if (memberUid === ownerUid) return { success: false, error: 'O criador não pode se remover' };
 
-  group.members = group.members.filter((m) => m.uid !== memberUid);
-  saveGroups(groups);
+  const memberToRemove = group.members.find((m) => m.uid === memberUid);
+  if (!memberToRemove) return { success: false, error: 'Membro não encontrado' };
+
+  await updateDoc(doc(db, GROUPS_COLLECTION, groupId), {
+    memberUids: arrayRemove(memberUid),
+    members: arrayRemove(memberToRemove),
+  });
+
   return { success: true };
 }
 
 /**
  * Sair de um grupo voluntariamente
  */
-export function leaveGroup(groupId, uid) {
-  const groups = loadGroups();
-  const group = groups.find((g) => g.id === groupId);
-
+export async function leaveGroup(groupId, uid) {
+  const group = await getGroupById(groupId);
   if (!group) return { success: false, error: 'Grupo não encontrado' };
   if (group.ownerUid === uid) return { success: false, error: 'O criador não pode sair do grupo. Delete-o.' };
 
-  group.members = group.members.filter((m) => m.uid !== uid);
-  saveGroups(groups);
+  const memberData = group.members.find((m) => m.uid === uid);
+  if (!memberData) return { success: false, error: 'Você não está neste grupo' };
+
+  await updateDoc(doc(db, GROUPS_COLLECTION, groupId), {
+    memberUids: arrayRemove(uid),
+    members: arrayRemove(memberData),
+  });
+
   return { success: true };
 }
 
 /**
  * Deleta um grupo (apenas o owner pode)
  */
-export function deleteGroup(groupId, ownerUid) {
-  let groups = loadGroups();
-  const group = groups.find((g) => g.id === groupId);
-
+export async function deleteGroup(groupId, ownerUid) {
+  const group = await getGroupById(groupId);
   if (!group) return { success: false, error: 'Grupo não encontrado' };
   if (group.ownerUid !== ownerUid) return { success: false, error: 'Apenas o criador pode deletar o grupo' };
 
-  groups = groups.filter((g) => g.id !== groupId);
-  saveGroups(groups);
+  await deleteDoc(doc(db, GROUPS_COLLECTION, groupId));
   return { success: true };
 }
 
@@ -172,55 +193,55 @@ export function deleteGroup(groupId, ownerUid) {
 /**
  * Retorna os dates de um grupo
  */
-export function getGroupDates(groupId) {
-  const group = getGroupById(groupId);
+export async function getGroupDates(groupId) {
+  const group = await getGroupById(groupId);
   return group ? group.dates : [];
 }
 
 /**
  * Salva (cria ou atualiza) um date no grupo
  */
-export function saveGroupDate(groupId, dateData) {
-  const groups = loadGroups();
-  const group = groups.find((g) => g.id === groupId);
+export async function saveGroupDate(groupId, dateData) {
+  const group = await getGroupById(groupId);
   if (!group) return null;
 
-  const idx = group.dates.findIndex((d) => d.id === dateData.id);
+  const dates = group.dates || [];
+  const idx = dates.findIndex((d) => d.id === dateData.id);
+
   if (idx >= 0) {
-    group.dates[idx] = { ...group.dates[idx], ...dateData };
+    dates[idx] = { ...dates[idx], ...dateData };
   } else {
-    group.dates.push(dateData);
+    dates.push(dateData);
   }
 
-  saveGroups(groups);
+  await updateDoc(doc(db, GROUPS_COLLECTION, groupId), { dates });
   return dateData;
 }
 
 /**
  * Remove um date de um grupo
  */
-export function deleteGroupDate(groupId, dateId) {
-  const groups = loadGroups();
-  const group = groups.find((g) => g.id === groupId);
+export async function deleteGroupDate(groupId, dateId) {
+  const group = await getGroupById(groupId);
   if (!group) return false;
 
-  group.dates = group.dates.filter((d) => d.id !== dateId);
-  saveGroups(groups);
+  const dates = (group.dates || []).filter((d) => d.id !== dateId);
+  await updateDoc(doc(db, GROUPS_COLLECTION, groupId), { dates });
   return true;
 }
 
 /**
  * Marca/desmarca um date como concluído
  */
-export function toggleGroupDateCompleted(groupId, dateId) {
-  const groups = loadGroups();
-  const group = groups.find((g) => g.id === groupId);
+export async function toggleGroupDateCompleted(groupId, dateId) {
+  const group = await getGroupById(groupId);
   if (!group) return null;
 
-  const date = group.dates.find((d) => d.id === dateId);
+  const dates = group.dates || [];
+  const date = dates.find((d) => d.id === dateId);
   if (!date) return null;
 
   date.completed = !date.completed;
-  saveGroups(groups);
+  await updateDoc(doc(db, GROUPS_COLLECTION, groupId), { dates });
   return date;
 }

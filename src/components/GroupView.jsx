@@ -54,12 +54,16 @@ export default function GroupView({ group: initialGroup, onBack, showToast }) {
 
   const isOwner = group.ownerUid === user?.uid;
 
-  // Recarregar dados do grupo
-  const refreshGroup = useCallback(() => {
-    const updated = getGroupById(group.id);
-    if (updated) {
-      setGroup(updated);
-      setDates(updated.dates || []);
+  // Recarregar dados do grupo do Firestore
+  const refreshGroup = useCallback(async () => {
+    try {
+      const updated = await getGroupById(group.id);
+      if (updated) {
+        setGroup(updated);
+        setDates(updated.dates || []);
+      }
+    } catch (e) {
+      console.warn('Erro ao recarregar grupo:', e);
     }
   }, [group.id]);
 
@@ -111,9 +115,9 @@ export default function GroupView({ group: initialGroup, onBack, showToast }) {
     setEditingDate(dateEntry); setSelectedDate(null); setShowDateModal(true);
   };
 
-  const saveDateDirectly = (dateData) => {
-    saveGroupDate(group.id, dateData);
-    refreshGroup();
+  const saveDateDirectly = async (dateData) => {
+    await saveGroupDate(group.id, dateData);
+    await refreshGroup();
   };
 
   const handleSaveDate = (dateData) => {
@@ -133,16 +137,16 @@ export default function GroupView({ group: initialGroup, onBack, showToast }) {
     showToast(isEditing ? '✏️ Date atualizado!' : '❤️ Date criado!');
   };
 
-  const handleDeleteDate = (dateId) => {
-    deleteGroupDate(group.id, dateId);
-    refreshGroup();
+  const handleDeleteDate = async (dateId) => {
+    await deleteGroupDate(group.id, dateId);
+    await refreshGroup();
     showToast('🗑️ Date removido');
   };
 
-  const handleToggleCompleted = (dateId) => {
-    const result = toggleGroupDateCompleted(group.id, dateId);
+  const handleToggleCompleted = async (dateId) => {
+    const result = await toggleGroupDateCompleted(group.id, dateId);
     if (result && result.completed) showToast('🎉 Muito bom, continue assim!');
-    refreshGroup();
+    await refreshGroup();
   };
 
   const handleRescheduleNextMonth = () => {
@@ -164,15 +168,19 @@ export default function GroupView({ group: initialGroup, onBack, showToast }) {
     showToast('❤️ Date criado (acima do orçamento)!');
   };
 
-  const handleRemoveMember = (memberUid) => {
+  const handleRemoveMember = async (memberUid) => {
     const member = group.members.find((m) => m.uid === memberUid);
     if (!confirm(`Remover ${member?.email} do grupo?`)) return;
-    const result = removeGroupMember(group.id, user.uid, memberUid);
-    if (result.success) {
-      refreshGroup();
-      showToast('Membro removido.');
-    } else {
-      showToast(result.error);
+    try {
+      const result = await removeGroupMember(group.id, user.uid, memberUid);
+      if (result.success) {
+        await refreshGroup();
+        showToast('Membro removido.');
+      } else {
+        showToast(result.error);
+      }
+    } catch (e) {
+      showToast('Erro ao remover membro.');
     }
   };
 
