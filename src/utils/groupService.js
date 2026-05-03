@@ -48,18 +48,11 @@ export async function createGroup(name, ownerUid, ownerEmail) {
   // Gerar código único
   let code = generateInviteCode();
 
-  // Verificar colisão (raro mas possível)
-  const codeQuery = query(collection(db, GROUPS_COLLECTION), where('code', '==', code));
-  const existing = await getDocs(codeQuery);
-  if (!existing.empty) {
-    code = generateInviteCode(); // Tenta outro
-  }
-
   const groupData = {
     name: name.trim(),
     code,
     ownerUid,
-    memberUids: [ownerUid], // Array simples para queries eficientes
+    memberUids: [ownerUid],
     members: [
       { uid: ownerUid, email: ownerEmail, role: 'owner', joinedAt: new Date().toISOString() },
     ],
@@ -67,7 +60,11 @@ export async function createGroup(name, ownerUid, ownerEmail) {
     createdAt: serverTimestamp(),
   };
 
+  console.log('[GroupService] Criando grupo:', { name: groupData.name, code, ownerUid });
+
   const docRef = await addDoc(collection(db, GROUPS_COLLECTION), groupData);
+
+  console.log('[GroupService] ✅ Grupo criado com sucesso! ID:', docRef.id, 'Código:', code);
 
   return { id: docRef.id, ...groupData };
 }
@@ -76,12 +73,14 @@ export async function createGroup(name, ownerUid, ownerEmail) {
  * Retorna todos os grupos onde o usuário é membro
  */
 export async function getMyGroups(uid) {
+  console.log('[GroupService] Buscando grupos do usuário:', uid);
   const q = query(
     collection(db, GROUPS_COLLECTION),
     where('memberUids', 'array-contains', uid)
   );
   const snapshot = await getDocs(q);
-  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  console.log('[GroupService] Grupos encontrados:', snapshot.size);
+  return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
 /**
@@ -100,39 +99,91 @@ export async function getGroupById(groupId) {
  * @returns {{ success: boolean, group?: Object, error?: string }}
  */
 export async function joinGroupByCode(code, uid, email) {
-  const q = query(
-    collection(db, GROUPS_COLLECTION),
-    where('code', '==', code.toUpperCase().trim())
-  );
-  const snapshot = await getDocs(q);
+  const cleanCode = code.toUpperCase().trim();
+  console.log('[GroupService] Tentando entrar com código:', cleanCode);
 
-  if (snapshot.empty) {
-    return { success: false, error: 'Código de convite inválido' };
+  try {
+    // Abordagem 1: Query direta por código
+    const q = query(
+      collection(db, GROUPS_COLLECTION),
+      where('code', '==', cleanCode)
+    );
+    const snapshot = await getDocs(q);
+
+    console.log('[GroupService] Query por código - documentos encontrados:', snapshot.size);
+
+    // Se a query direta falhar (0 resultados), tenta buscar TODOS e filtrar
+    // Isso diagnostica se o problema é na query ou nos dados
+    if (snapshot.empty) {
+      console.log('[GroupService] Query direta vazia. Tentando busca completa...');
+
+      const allSnapshot = await getDocs(collection(db, GROUPS_COLLECTION));
+      console.log('[GroupService] Total de grupos no Firestore:', allSnapshot.size);
+
+      let foundGroup = null;
+      allSnapshot.forEach((d) => {
+        const data = d.data();
+        console.log('[GroupService] Grupo:', d.id, '→ code:', data.code, '| name:', data.name);
+        if (data.code === cleanCode) {
+          foundGroup = { id: d.id, ...data };
+        }
+      });
+
+      if (!foundGroup) {
+        console.log('[GroupService] ❌ Código não existe em nenhum grupo');
+        return { success: false, error: 'Código de convite inválido. Verifique se digitou corretamente.' };
+      }
+
+      // Encontrado via busca completa — usar este grupo
+      console.log('[GroupService] ✅ Grupo encontrado via busca completa:', foundGroup.name);
+
+      if (foundGroup.memberUids && foundGroup.memberUids.includes(uid)) {
+        return { success: false, error: 'Você já faz parte deste grupo' };
+      }
+
+      await updateDoc(doc(db, GROUPS_COLLECTION, foundGroup.id), {
+        memberUids: arrayUnion(uid),
+        members: arrayUnion({
+          uid,
+          email,
+          role: 'member',
+          joinedAt: new Date().toISOString(),
+        }),
+      });
+
+      return { success: true, group: foundGroup };
+    }
+
+    // Query direta encontrou resultados
+    const groupDoc = snapshot.docs[0];
+    const groupData = groupDoc.data();
+    console.log('[GroupService] ✅ Grupo encontrado:', groupData.name);
+
+    if (groupData.memberUids && groupData.memberUids.includes(uid)) {
+      return { success: false, error: 'Você já faz parte deste grupo' };
+    }
+
+    await updateDoc(doc(db, GROUPS_COLLECTION, groupDoc.id), {
+      memberUids: arrayUnion(uid),
+      members: arrayUnion({
+        uid,
+        email,
+        role: 'member',
+        joinedAt: new Date().toISOString(),
+      }),
+    });
+
+    return {
+      success: true,
+      group: { id: groupDoc.id, ...groupData },
+    };
+  } catch (err) {
+    console.error('[GroupService] ❌ Erro ao buscar grupo:', err.code, err.message);
+    return {
+      success: false,
+      error: `Erro ao buscar grupo: ${err.code || err.message}. Verifique as regras do Firestore.`,
+    };
   }
-
-  const groupDoc = snapshot.docs[0];
-  const groupData = groupDoc.data();
-
-  // Verificar se já é membro
-  if (groupData.memberUids && groupData.memberUids.includes(uid)) {
-    return { success: false, error: 'Você já faz parte deste grupo' };
-  }
-
-  // Adicionar membro ao grupo
-  await updateDoc(doc(db, GROUPS_COLLECTION, groupDoc.id), {
-    memberUids: arrayUnion(uid),
-    members: arrayUnion({
-      uid,
-      email,
-      role: 'member',
-      joinedAt: new Date().toISOString(),
-    }),
-  });
-
-  return {
-    success: true,
-    group: { id: groupDoc.id, ...groupData },
-  };
 }
 
 /**
