@@ -1,7 +1,8 @@
 import React from 'react';
+import { useAuth } from '../contexts/AuthContext';
 
 /**
- * Header — Navegação do mês, logo central, notificações e orçamento
+ * Header — Navegação do mês, logo central, notificações, orçamento, grupos e avatar
  */
 export default function Header({
   currentMonth,
@@ -12,7 +13,11 @@ export default function Header({
   monthSpent,
   onBudgetClick,
   onNotifClick,
+  onGroupsClick,
+  onLogout,
 }) {
+  const { user } = useAuth();
+
   const monthNames = [
     'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
     'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
@@ -36,6 +41,9 @@ export default function Header({
   }
   if (isOver) valueColor = 'var(--danger)';
 
+  // Iniciais do email para o avatar
+  const userInitial = user?.email ? user.email[0].toUpperCase() : '?';
+
   return (
     <header className="header">
       {/* Navegação do mês */}
@@ -57,8 +65,13 @@ export default function Header({
         <span className="header__logo">DATE PLAN</span>
       </div>
 
-      {/* Área direita: notificações + orçamento */}
+      {/* Área direita */}
       <div className="header__right">
+        {/* Botão Grupos */}
+        <button className="header__notif-btn" onClick={onGroupsClick} aria-label="Meus Grupos" title="Meus Grupos">
+          👥
+        </button>
+
         {/* Botão de notificações */}
         <button className="header__notif-btn" onClick={onNotifClick} aria-label="Configurar notificações">
           🔔
@@ -85,8 +98,12 @@ export default function Header({
             </div>
           )}
         </button>
+
+        {/* Avatar do usuário */}
+        <button className="header__avatar" onClick={onLogout} aria-label="Logout" title={`Sair (${user?.email})`}>
+          {userInitial}
+        </button>
       </div>
     </header>
   );
 }
-
