@@ -14,7 +14,7 @@ export default function AuthScreen() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const translateError = (code) => {
+  const translateError = (code, message) => {
     const errors = {
       'auth/invalid-email': 'Email inválido.',
       'auth/user-disabled': 'Esta conta foi desativada.',
@@ -25,8 +25,15 @@ export default function AuthScreen() {
       'auth/weak-password': 'A senha deve ter pelo menos 6 caracteres.',
       'auth/too-many-requests': 'Muitas tentativas. Tente novamente mais tarde.',
       'auth/network-request-failed': 'Erro de conexão. Verifique sua internet.',
+      'auth/invalid-api-key': '⚠️ Chave Firebase não configurada! Preencha o arquivo .env com suas credenciais.',
+      'auth/api-key-not-valid': '⚠️ Chave Firebase inválida! Verifique o arquivo .env.',
     };
-    return errors[code] || 'Ocorreu um erro. Tente novamente.';
+    if (errors[code]) return errors[code];
+    // Se a mensagem contém "api key", provavelmente é problema de config
+    if (message && message.toLowerCase().includes('api key')) {
+      return '⚠️ Firebase não configurado. Preencha as credenciais no arquivo .env';
+    }
+    return `Erro: ${code || message || 'desconhecido'}. Tente novamente.`;
   };
 
   const handleSubmit = async (e) => {
@@ -58,7 +65,8 @@ export default function AuthScreen() {
       }
       // onAuthStateChanged no AuthContext cuidará da navegação
     } catch (err) {
-      setError(translateError(err.code));
+      console.error('Auth error:', err.code, err.message);
+      setError(translateError(err.code, err.message));
     } finally {
       setLoading(false);
     }
