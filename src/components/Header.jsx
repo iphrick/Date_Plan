@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 
 /**
- * Header — Navegação do mês, logo central, notificações, orçamento, grupos e avatar
+ * Header — Navegação do mês, logo central, orçamento e menu do avatar
  */
 export default function Header({
   currentMonth,
@@ -17,6 +17,8 @@ export default function Header({
   onLogout,
 }) {
   const { user } = useAuth();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
 
   const monthNames = [
     'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -27,22 +29,45 @@ export default function Header({
   const isOver = remaining < 0;
   const percentage = monthBudget > 0 ? Math.min((monthSpent / monthBudget) * 100, 100) : 0;
 
-  // Cor da barra e do valor
   let barColor = 'var(--success)';
   let valueColor = 'var(--accent)';
   if (monthBudget > 0) {
-    if (percentage > 90) {
-      barColor = 'var(--danger)';
-      valueColor = 'var(--danger)';
-    } else if (percentage > 70) {
-      barColor = 'var(--warning)';
-      valueColor = 'var(--warning)';
-    }
+    if (percentage > 90) { barColor = 'var(--danger)'; valueColor = 'var(--danger)'; }
+    else if (percentage > 70) { barColor = 'var(--warning)'; valueColor = 'var(--warning)'; }
   }
   if (isOver) valueColor = 'var(--danger)';
 
-  // Iniciais do email para o avatar
   const userInitial = user?.email ? user.email[0].toUpperCase() : '?';
+  const userEmail = user?.email || '';
+
+  // Fechar menu ao clicar fora
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setMenuOpen(false);
+      }
+    };
+    if (menuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [menuOpen]);
+
+  // Fechar menu com ESC
+  useEffect(() => {
+    const handleEsc = (e) => { if (e.key === 'Escape') setMenuOpen(false); };
+    if (menuOpen) document.addEventListener('keydown', handleEsc);
+    return () => document.removeEventListener('keydown', handleEsc);
+  }, [menuOpen]);
+
+  const handleMenuAction = (action) => {
+    setMenuOpen(false);
+    action();
+  };
 
   return (
     <header className="header">
@@ -65,18 +90,8 @@ export default function Header({
         <span className="header__logo">DATE PLAN</span>
       </div>
 
-      {/* Área direita */}
+      {/* Área direita: orçamento + avatar */}
       <div className="header__right">
-        {/* Botão Grupos */}
-        <button className="header__notif-btn" onClick={onGroupsClick} aria-label="Meus Grupos" title="Meus Grupos">
-          👥
-        </button>
-
-        {/* Botão de notificações */}
-        <button className="header__notif-btn" onClick={onNotifClick} aria-label="Configurar notificações">
-          🔔
-        </button>
-
         {/* Botão de orçamento com mini barra */}
         <button className="header__budget-btn" onClick={onBudgetClick} aria-label="Abrir orçamento">
           <div className="header__budget-info">
@@ -88,7 +103,6 @@ export default function Header({
               <span className="header__budget-label">restante</span>
             </div>
           </div>
-          {/* Mini barra de progresso */}
           {monthBudget > 0 && (
             <div className="header__budget-bar">
               <div
@@ -99,10 +113,66 @@ export default function Header({
           )}
         </button>
 
-        {/* Avatar do usuário */}
-        <button className="header__avatar" onClick={onLogout} aria-label="Logout" title={`Sair (${user?.email})`}>
-          {userInitial}
-        </button>
+        {/* Avatar + Dropdown Menu */}
+        <div className="avatar-menu" ref={menuRef}>
+          <button
+            className={`header__avatar ${menuOpen ? 'header__avatar--active' : ''}`}
+            onClick={() => setMenuOpen(!menuOpen)}
+            aria-label="Menu do usuário"
+            aria-expanded={menuOpen}
+            aria-haspopup="true"
+          >
+            {userInitial}
+          </button>
+
+          {menuOpen && (
+            <>
+              <div className="avatar-menu__backdrop" />
+              <div className="avatar-menu__dropdown" role="menu">
+                {/* Info do usuário */}
+                <div className="avatar-menu__user">
+                  <div className="avatar-menu__user-avatar">{userInitial}</div>
+                  <div className="avatar-menu__user-info">
+                    <span className="avatar-menu__user-email">{userEmail}</span>
+                    <span className="avatar-menu__user-label">Conta ativa</span>
+                  </div>
+                </div>
+
+                <div className="avatar-menu__divider" />
+
+                {/* Opções */}
+                <button
+                  className="avatar-menu__item"
+                  onClick={() => handleMenuAction(onGroupsClick)}
+                  role="menuitem"
+                >
+                  <span className="avatar-menu__item-icon">👥</span>
+                  <span className="avatar-menu__item-text">Meus Grupos</span>
+                </button>
+
+                <button
+                  className="avatar-menu__item"
+                  onClick={() => handleMenuAction(onNotifClick)}
+                  role="menuitem"
+                >
+                  <span className="avatar-menu__item-icon">🔔</span>
+                  <span className="avatar-menu__item-text">Notificações</span>
+                </button>
+
+                <div className="avatar-menu__divider" />
+
+                <button
+                  className="avatar-menu__item avatar-menu__item--danger"
+                  onClick={() => handleMenuAction(onLogout)}
+                  role="menuitem"
+                >
+                  <span className="avatar-menu__item-icon">🚪</span>
+                  <span className="avatar-menu__item-text">Sair da Conta</span>
+                </button>
+              </div>
+            </>
+          )}
+        </div>
       </div>
     </header>
   );
