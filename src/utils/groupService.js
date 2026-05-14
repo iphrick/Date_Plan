@@ -320,31 +320,52 @@ const PHOTOS_COLLECTION = 'group_photos';
  * Salva uma foto no álbum de um grupo no Firestore
  */
 export async function saveGroupPhoto(groupId, dateId, dataUrl, isCover = false, userUid = '') {
-  const photoData = {
-    groupId,
-    dateId,
-    dataUrl,
-    isCover,
-    userUid,
-    createdAt: serverTimestamp(),
-  };
+  console.log('[GroupService] Salvando foto no Firestore:', { groupId, dateId, dataSize: dataUrl.length });
+  try {
+    const photoData = {
+      groupId,
+      dateId,
+      dataUrl,
+      isCover,
+      userUid,
+      createdAt: serverTimestamp(),
+    };
 
-  const docRef = await addDoc(collection(db, PHOTOS_COLLECTION), photoData);
-  return { id: docRef.id, ...photoData };
+    const docRef = await addDoc(collection(db, PHOTOS_COLLECTION), photoData);
+    console.log('[GroupService] ✅ Foto salva com sucesso! ID:', docRef.id);
+    return { id: docRef.id, ...photoData };
+  } catch (err) {
+    console.error('[GroupService] ❌ Erro ao salvar foto no Firestore:', err.code, err.message);
+    throw err;
+  }
 }
 
 /**
  * Busca todas as fotos de um date em um grupo
  */
 export async function getGroupPhotos(groupId, dateId) {
-  const q = query(
-    collection(db, PHOTOS_COLLECTION),
-    where('groupId', '==', groupId),
-    where('dateId', '==', dateId),
-    orderBy('createdAt', 'asc')
-  );
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+  console.log('[GroupService] Buscando fotos no Firestore:', { groupId, dateId });
+  try {
+    const q = query(
+      collection(db, PHOTOS_COLLECTION),
+      where('groupId', '==', groupId),
+      where('dateId', '==', dateId)
+    );
+    const snapshot = await getDocs(q);
+    console.log('[GroupService] Fotos encontradas:', snapshot.size);
+    
+    const photos = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+    
+    // Ordenar em JS para evitar necessidade de índices compostos no Firestore
+    return photos.sort((a, b) => {
+      const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : (a.createdAt?.seconds ? a.createdAt.seconds * 1000 : 0);
+      const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : (b.createdAt?.seconds ? b.createdAt.seconds * 1000 : 0);
+      return timeA - timeB;
+    });
+  } catch (err) {
+    console.error('[GroupService] ❌ Erro ao buscar fotos no Firestore:', err.code, err.message);
+    return [];
+  }
 }
 
 /**

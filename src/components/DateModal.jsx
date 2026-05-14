@@ -140,6 +140,7 @@ export default function DateModal({
 
     for (const file of files) {
       if (!isValidImage(file)) {
+        console.warn('[DateModal] Arquivo inválido:', file.name);
         continue;
       }
 
@@ -148,6 +149,8 @@ export default function DateModal({
         const compressed = await compressImage(file);
         const isFirst = photos.length === 0 && count === 1;
         
+        console.log('[DateModal] Enviando foto...', { isGroup: !!groupId, size: compressed.length });
+
         if (groupId) {
           await saveGroupPhoto(groupId, editingDate.id, compressed, isFirst, user?.uid);
         } else {
@@ -159,11 +162,13 @@ export default function DateModal({
           onCoverChange(editingDate.id, compressed);
         }
       } catch (err) {
-        console.warn('Erro ao processar foto:', err);
+        console.error('[DateModal] Erro ao processar/enviar foto:', err);
+        alert(`Erro ao adicionar foto "${file.name}": ${err.message || 'Erro desconhecido'}`);
       }
     }
 
     // Recarregar fotos
+    console.log('[DateModal] Recarregando álbum...');
     await loadPhotos(editingDate.id);
     setUploading(false);
     setUploadProgress('');
