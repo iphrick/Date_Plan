@@ -12,6 +12,8 @@ import {
   toggleGroupDateCompleted,
   removeGroupMember,
 } from '../utils/groupService';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '../firebase';
 
 /**
  * GroupView — Visualização de um grupo selecionado
@@ -76,12 +78,35 @@ export default function GroupView({ group: initialGroup, onBack, showToast }) {
     } catch {}
   }, [group.id]);
 
-  // Salvar budgets do grupo
   useEffect(() => {
     if (Object.keys(budgets).length > 0) {
       localStorage.setItem(`date_plan_group_budgets_${group.id}`, JSON.stringify(budgets));
     }
   }, [budgets, group.id]);
+
+  // Carregar capas das fotos do grupo do Firestore (Sincronização entre usuários)
+  const loadCoverPhotos = useCallback(async () => {
+    try {
+      const q = query(
+        collection(db, 'group_photos'),
+        where('groupId', '==', group.id),
+        where('isCover', '==', true)
+      );
+      const snapshot = await getDocs(q);
+      const covers = {};
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        covers[data.dateId] = data.dataUrl;
+      });
+      setCoverPhotos(covers);
+    } catch (e) {
+      console.warn('Erro ao carregar capas do grupo:', e);
+    }
+  }, [group.id]);
+
+  useEffect(() => {
+    loadCoverPhotos();
+  }, [loadCoverPhotos, dates]); // Recarregar capas quando os dates mudarem
 
   // Budget calculations
   const currentMonthKey = getMonthKey(currentMonth, currentYear);
