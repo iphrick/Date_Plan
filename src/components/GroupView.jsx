@@ -287,6 +287,7 @@ export default function GroupView({ group: initialGroup, onBack, showToast }) {
         onCoverChange={(id, url) => setCoverPhotos((p) => { const u = { ...p }; url ? u[id] = url : delete u[id]; return u; })}
         editingDate={editingDate}
         selectedDate={selectedDate}
+        groupId={group.id}
       />
 
       <BudgetAlert
@@ -315,6 +316,7 @@ export default function GroupView({ group: initialGroup, onBack, showToast }) {
         onClose={() => { setShowPhotoGallery(false); setGalleryDate(null); }}
         dateEntry={galleryDate}
         onCoverChange={(id, url) => setCoverPhotos((p) => { const u = { ...p }; url ? u[id] = url : delete u[id]; return u; })}
+        groupId={group.id}
       />
     </>
   );

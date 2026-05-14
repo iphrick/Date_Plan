@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getPhotos, deletePhoto, setCoverPhoto } from '../utils/photoDb';
+import { getGroupPhotos, deleteGroupPhoto, setGroupCoverPhoto } from '../utils/groupService';
 
 /**
  * PhotoGallery — Modal galeria de fotos de um date
  * Grid responsivo, lightbox, definir capa, excluir fotos
  */
-export default function PhotoGallery({ isOpen, onClose, dateEntry, onCoverChange }) {
+export default function PhotoGallery({ isOpen, onClose, dateEntry, onCoverChange, groupId = null }) {
   const [photos, setPhotos] = useState([]);
   const [lightboxPhoto, setLightboxPhoto] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -14,7 +15,11 @@ export default function PhotoGallery({ isOpen, onClose, dateEntry, onCoverChange
   useEffect(() => {
     if (isOpen && dateEntry?.id) {
       setLoading(true);
-      getPhotos(dateEntry.id)
+      const loadMethod = groupId 
+        ? () => getGroupPhotos(groupId, dateEntry.id)
+        : () => getPhotos(dateEntry.id);
+      
+      loadMethod()
         .then((p) => {
           setPhotos(p);
           setLoading(false);
@@ -47,7 +52,11 @@ export default function PhotoGallery({ isOpen, onClose, dateEntry, onCoverChange
   if (!isOpen || !dateEntry) return null;
 
   const handleSetCover = async (photoId) => {
-    await setCoverPhoto(dateEntry.id, photoId);
+    if (groupId) {
+      await setGroupCoverPhoto(groupId, dateEntry.id, photoId);
+    } else {
+      await setCoverPhoto(dateEntry.id, photoId);
+    }
     setPhotos((prev) =>
       prev.map((p) => ({ ...p, isCover: p.id === photoId }))
     );
@@ -59,13 +68,21 @@ export default function PhotoGallery({ isOpen, onClose, dateEntry, onCoverChange
 
   const handleDelete = async (photoId) => {
     const photo = photos.find((p) => p.id === photoId);
-    await deletePhoto(photoId);
+    if (groupId) {
+      await deleteGroupPhoto(photoId);
+    } else {
+      await deletePhoto(photoId);
+    }
     const updatedPhotos = photos.filter((p) => p.id !== photoId);
     setPhotos(updatedPhotos);
 
     // Se a foto deletada era a capa, definir a próxima como capa
     if (photo?.isCover && updatedPhotos.length > 0) {
-      await setCoverPhoto(dateEntry.id, updatedPhotos[0].id);
+      if (groupId) {
+        await setGroupCoverPhoto(groupId, dateEntry.id, updatedPhotos[0].id);
+      } else {
+        await setCoverPhoto(dateEntry.id, updatedPhotos[0].id);
+      }
       setPhotos((prev) =>
         prev.map((p, i) => ({ ...p, isCover: i === 0 }))
       );

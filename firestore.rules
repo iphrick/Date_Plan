@@ -1,0 +1,48 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Funções auxiliares
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isMemberOfGroup(groupId) {
+      return isSignedIn() && 
+        exists(/databases/$(database)/documents/groups/$(groupId)) &&
+        request.auth.uid in get(/databases/$(database)/documents/groups/$(groupId)).data.memberUids;
+    }
+
+    // Regras para a coleção de usuários
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow write: if request.auth.uid == userId;
+    }
+
+    // Regras para a coleção de grupos
+    match /groups/{groupId} {
+      // Leitura permitida para membros (r)
+      allow read: if isMemberOfGroup(groupId);
+      
+      // Escrita permitida para membros (w) - Criar/Atualizar/Deletar dates
+      allow create: if isSignedIn();
+      allow update: if isMemberOfGroup(groupId);
+      
+      // Apenas o owner pode deletar o grupo
+      allow delete: if isSignedIn() && resource.data.ownerUid == request.auth.uid;
+    }
+
+    // Regras para o álbum de fotos (leitura, escrita e execução conceitual)
+    match /group_photos/{photoId} {
+      // Todos os usuários dentro do grupo têm permissão total (rwx)
+      // Leitura: Qualquer membro do grupo pode ver as fotos
+      allow read: if isMemberOfGroup(resource.data.groupId);
+      
+      // Escrita: Qualquer membro pode adicionar fotos
+      allow create: if isSignedIn() && isMemberOfGroup(request.resource.data.groupId);
+      
+      // Escrita/Deleção: Qualquer membro pode alterar ou excluir fotos (conforme solicitado)
+      allow update, delete: if isMemberOfGroup(resource.data.groupId);
+    }
+  }
+}

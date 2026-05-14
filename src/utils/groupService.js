@@ -18,6 +18,7 @@ import {
   arrayUnion,
   arrayRemove,
   serverTimestamp,
+  orderBy,
 } from 'firebase/firestore';
 import { db } from '../firebase';
 
@@ -279,6 +280,17 @@ export async function deleteGroupDate(groupId, dateId) {
 
   const dates = (group.dates || []).filter((d) => d.id !== dateId);
   await updateDoc(doc(db, GROUPS_COLLECTION, groupId), { dates });
+
+  // Também remover todas as fotos desse date do Firestore
+  try {
+    const photos = await getGroupPhotos(groupId, dateId);
+    for (const photo of photos) {
+      await deleteGroupPhoto(photo.id);
+    }
+  } catch (e) {
+    console.warn('Erro ao remover fotos do grupo durante deleção do date:', e);
+  }
+
   return true;
 }
 
@@ -296,4 +308,65 @@ export async function toggleGroupDateCompleted(groupId, dateId) {
   date.completed = !date.completed;
   await updateDoc(doc(db, GROUPS_COLLECTION, groupId), { dates });
   return date;
+}
+
+// ========================================
+// CRUD de Fotos de Grupos (Firestore)
+// ========================================
+
+const PHOTOS_COLLECTION = 'group_photos';
+
+/**
+ * Salva uma foto no álbum de um grupo no Firestore
+ */
+export async function saveGroupPhoto(groupId, dateId, dataUrl, isCover = false, userUid = '') {
+  const photoData = {
+    groupId,
+    dateId,
+    dataUrl,
+    isCover,
+    userUid,
+    createdAt: serverTimestamp(),
+  };
+
+  const docRef = await addDoc(collection(db, PHOTOS_COLLECTION), photoData);
+  return { id: docRef.id, ...photoData };
+}
+
+/**
+ * Busca todas as fotos de um date em um grupo
+ */
+export async function getGroupPhotos(groupId, dateId) {
+  const q = query(
+    collection(db, PHOTOS_COLLECTION),
+    where('groupId', '==', groupId),
+    where('dateId', '==', dateId),
+    orderBy('createdAt', 'asc')
+  );
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+/**
+ * Define uma foto como capa no Firestore
+ */
+export async function setGroupCoverPhoto(groupId, dateId, photoId) {
+  const photos = await getGroupPhotos(groupId, dateId);
+  
+  // Atualizar todas as fotos do date no grupo
+  const batch = []; // Em Firestore SDK v9 use serial updates ou writeBatch
+  // Simplificado para este MVP: atualizar apenas a nova e a antiga capa se necessário
+  for (const photo of photos) {
+    const isNewCover = photo.id === photoId;
+    if (photo.isCover !== isNewCover) {
+      await updateDoc(doc(db, PHOTOS_COLLECTION, photo.id), { isCover: isNewCover });
+    }
+  }
+}
+
+/**
+ * Exclui uma foto do Firestore
+ */
+export async function deleteGroupPhoto(photoId) {
+  await deleteDoc(doc(db, PHOTOS_COLLECTION, photoId));
 }

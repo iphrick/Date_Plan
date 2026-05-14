@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { compressImage, isValidImage } from '../utils/imageUtils';
 import { savePhoto, getPhotos, getCoverPhoto } from '../utils/photoDb';
+import { saveGroupPhoto, getGroupPhotos } from '../utils/groupService';
+import { useAuth } from '../contexts/AuthContext';
 
 /**
  * DateModal — Modal para criar/editar compromissos (dates)
@@ -16,7 +18,9 @@ export default function DateModal({
   onCoverChange,
   editingDate,
   selectedDate,
+  groupId = null, // Novo prop para identificar se é um date de grupo
 }) {
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -66,7 +70,9 @@ export default function DateModal({
 
   const loadPhotos = async (dateId) => {
     try {
-      const p = await getPhotos(dateId);
+      const p = groupId 
+        ? await getGroupPhotos(groupId, dateId)
+        : await getPhotos(dateId);
       setPhotos(p);
     } catch (e) {
       console.warn('Erro ao carregar fotos:', e);
@@ -141,7 +147,12 @@ export default function DateModal({
         setUploadProgress(`Processando ${++count}/${files.length}...`);
         const compressed = await compressImage(file);
         const isFirst = photos.length === 0 && count === 1;
-        await savePhoto(editingDate.id, compressed, isFirst);
+        
+        if (groupId) {
+          await saveGroupPhoto(groupId, editingDate.id, compressed, isFirst, user?.uid);
+        } else {
+          await savePhoto(editingDate.id, compressed, isFirst);
+        }
 
         // Se primeira foto, definir como capa
         if (isFirst && onCoverChange) {
